@@ -2,20 +2,24 @@ import streamlit as st
 from supabase import create_client, Client
 import pandas as pd
 
-# Conexão com o seu banco
+# Use suas credenciais REAIS aqui
 URL = "https://zfwdjpklemkuvwizdoly.supabase.co"
-KEY = "SUA_CHAVE_AQUI" 
+KEY = "COLE_AQUI_SUA_CHAVE_SERVICE_ROLE" 
+
 supabase = create_client(URL, KEY)
 
 st.title("🔍 Consulta de Leads - CRM")
 
-# Botão para buscar os dados
 if st.button("Atualizar Lista de Clientes"):
-    resposta = supabase.table("VENDAS").select("*").execute()
-    
-    if resposta.data:
-        df = pd.DataFrame(resposta.data)
-        # Mostra apenas as colunas que você quer
-        st.dataframe(df[["Nome", "Telefone", "Status"]])
-    else:
-        st.info("Nenhum dado encontrado no banco.")
+    try:
+        # Busca os dados
+        resposta = supabase.table("VENDAS").select("*").execute()
+        
+        if resposta.data:
+            df = pd.DataFrame(resposta.data)
+            # Mostra a tabela organizada
+            st.dataframe(df[["Nome", "Telefone", "Status"]])
+        else:
+            st.info("Nenhum dado encontrado na tabela VENDAS.")
+    except Exception as e:
+        st.error(f"Erro na conexão: {e}")
