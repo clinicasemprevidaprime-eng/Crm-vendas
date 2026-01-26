@@ -4,7 +4,7 @@ import pandas as pd
 
 # Use suas credenciais REAIS aqui
 URL = "https://zfwdjpklemkuvwizdoly.supabase.co"
-KEY = "COLE_AQUI_SUA_CHAVE_SERVICE_ROLE" 
+KEY = "sb_publishable_qMi5vxWp54WVmmQuoDHkdg_YeaRbiW_" 
 
 supabase = create_client(URL, KEY)
 
