@@ -10,7 +10,6 @@ supabase = create_client(URL, KEY)
 st.title("🔍 Gestão Med Card - Consulta e Edição")
 
 # --- BUSCA DE DADOS ---
-# Forçamos a busca de TODOS os campos para garantir que o ID venha junto
 resposta = supabase.table("VENDAS").select("*").order("created_at", desc=True).execute()
 
 if resposta.data:
@@ -19,9 +18,12 @@ if resposta.data:
     # Criamos a coluna de data legível
     df['Data'] = pd.to_datetime(df['created_at']).dt.strftime('%d/%m/%Y %H:%M')
     
+    # LIMPEZA DE DADOS (IMPEDE O ERRO DO 'NONE')
+    # Se o ID ou Nome estiverem vazios por algum erro, nós removemos da lista de edição
+    df = df.dropna(subset=['id', 'Nome'])
+    
     # TABELA PRINCIPAL
     st.subheader("📋 Lista de Leads")
-    # Mostramos apenas o que interessa na tabela
     st.dataframe(df[["Data", "Nome", "Telefone", "Status", "Observacoes"]], use_container_width=True)
 
     st.divider()
@@ -29,41 +31,39 @@ if resposta.data:
     # --- ÁREA DE EDIÇÃO ---
     st.subheader("📝 Editar Informações")
     
-    # Criamos uma lista que combina ID e Nome para não ter erro de busca
-    # Exemplo: "15 - Douglas"
-    df['opcao_selecao'] = df['id'].astype(str) + " - " + df['Nome']
+    # Criamos a lista de seleção garantindo que o ID seja um texto limpo
+    df['opcao_selecao'] = df['id'].astype(int).astype(str) + " - " + df['Nome'].astype(str)
     
     escolha = st.selectbox("Selecione o cliente:", [""] + df['opcao_selecao'].tolist())
 
-    if escolha:
-        # Extraímos o ID real da string selecionada
-        id_escolhido = int(escolha.split(" - ")[0])
-        
-        # Localizamos os dados exatos desse ID
-        dados = df[df['id'] == id_escolhido].iloc[0]
-
-        with st.form("form_final_v4"):
-            c1, c2 = st.columns(2)
-            with c1:
-                nome_ed = st.text_input("Nome", value=str(dados['Nome']))
-                tel_ed = st.text_input("Telefone", value=str(dados['Telefone']))
-            with c2:
-                status_opcoes = ["Novo", "Pendente", "Em Negociação", "Fechado", "Cancelado"]
-                try:
-                    idx = status_opcoes.index(dados['Status'])
-                except:
-                    idx = 0
-                status_ed = st.selectbox("Status", status_opcoes, index=idx)
+    if escolha and " - " in escolha:
+        try:
+            # Extraímos o ID com segurança
+            id_escolhido = int(escolha.split(" - ")[0])
             
-            # Limpeza de Observação (Tira o 'None' chato)
-            obs_valor = dados['Observacoes'] if dados['Observacoes'] and str(dados['Observacoes']) != 'None' else ""
-            obs_ed = st.text_area("Observações", value=str(obs_valor))
-            
-            btn_salvar = st.form_submit_button("Salvar Alterações")
+            # Localizamos os dados exatos desse ID
+            dados = df[df['id'] == id_escolhido].iloc[0]
 
-        if btn_salvar:
-            try:
-                # O comando .eq("id", id_escolhido) é o mais seguro que existe
+            with st.form("form_edicao_v5"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    nome_ed = st.text_input("Nome", value=str(dados['Nome']))
+                    tel_ed = st.text_input("Telefone", value=str(dados['Telefone']))
+                with c2:
+                    status_opcoes = ["Novo", "Pendente", "Em Negociação", "Fechado", "Cancelado"]
+                    try:
+                        idx = status_opcoes.index(dados['Status'])
+                    except:
+                        idx = 0
+                    status_ed = st.selectbox("Status", status_opcoes, index=idx)
+                
+                # Tratamento para Observação (Mostra vazio em vez de 'None')
+                obs_v = dados['Observacoes'] if dados['Observacoes'] and str(dados['Observacoes']) != 'None' else ""
+                obs_ed = st.text_area("Observações", value=str(obs_v))
+                
+                btn_salvar = st.form_submit_button("Salvar Alterações")
+
+            if btn_salvar:
                 supabase.table("VENDAS").update({
                     "Nome": nome_ed,
                     "Telefone": tel_ed,
@@ -73,7 +73,7 @@ if resposta.data:
                 
                 st.success("✅ Atualizado com sucesso!")
                 st.rerun()
-            except Exception as e:
-                st.error(f"Erro ao salvar: {e}")
+        except Exception as e:
+            st.error(f"Erro ao processar seleção: {e}")
 else:
     st.info("Banco de dados vazio.")
