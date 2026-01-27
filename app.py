@@ -8,7 +8,7 @@ KEY = "sb_publishable_qMi5vxWp54WVmmQuoDHkdg_YeaRbiW_"
 supabase = create_client(URL, KEY)
 
 # Configuração da Página
-st.set_page_config(page_title="Portal Clínica Sempre Vida", layout="wide")
+st.set_page_config(page_title="Portal CRM", layout="wide")
 
 # --- BARRA LATERAL (MENU) ---
 st.sidebar.title("🏥 Gestão CRM")
@@ -16,7 +16,7 @@ opcao = st.sidebar.radio("Escolha uma opção:", ["📝 Novo Cadastro", "🔍 Co
 
 # --- PÁGINA 1: NOVO CADASTRO ---
 if opcao == "📝 Novo Cadastro":
-    st.title("🚀 Cadastrar Novo Lead - Med Card")
+    st.title("🚀 Cadastrar Novo Lead - Crm")
     
     with st.form("form_novo_lead", clear_on_submit=True):
         col1, col2 = st.columns(2)
