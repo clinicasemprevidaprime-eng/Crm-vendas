@@ -1,49 +1,98 @@
 import streamlit as st
 from supabase import create_client, Client
+import pandas as pd
 
-# 1. Configuração visual da página
-st.set_page_config(page_title="CRM Douglas - Vendas", page_icon="🚀")
+# 1. Suas chaves (Mantenha as suas originais aqui)
+URL = "https://zfwdjpklemkuvwizdoly.supabase.co"
+KEY = "sb_publishable_qMi5vxWp54WVmmQuoDHkdg_YeaRbiW_" 
+supabase = create_client(URL, KEY)
 
-# 2. Dados de Conexão (Use os seus dados do Supabase)
-# Dica: No futuro, usaremos 'st.secrets' para maior segurança
-URL_PROJETO = "https://zfwdjpklemkuvwizdoly.supabase.co"
-CHAVE_API = "sb_publishable_qMi5vxWp54WVmmQuoDHkdg_YeaRbiW_" 
+# Configuração da Página
+st.set_page_config(page_title="Portal Clínica Sempre Vida", layout="wide")
 
-supabase: Client = create_client(URL_PROJETO, CHAVE_API)
+# --- BARRA LATERAL (MENU) ---
+st.sidebar.title("🏥 Gestão CRM")
+opcao = st.sidebar.radio("Escolha uma opção:", ["📝 Novo Cadastro", "🔍 Consulta e Edição"])
 
-# 3. Interface do Site
-st.title("📋 Cadastro de Leads")
-st.write("Preencha os dados abaixo para salvar diretamente no banco de dados.")
-
-# Criando o formulário
-with st.form("form_vendas", clear_on_submit=True):
-    nome_cliente = st.text_input("Nome Completo")
-    telefone_cliente = st.text_input("Telefone / WhatsApp")
-    status_venda = st.selectbox("Status da Negociação", ["Novo", "Em Negociação", "Pendente", "Fechado"])
+# --- PÁGINA 1: NOVO CADASTRO ---
+if opcao == "📝 Novo Cadastro":
+    st.title("🚀 Cadastrar Novo Lead - Med Card")
     
-    # Botão de envio
-    botao_cadastrar = st.form_submit_button("Cadastrar no CRM")
+    with st.form("form_novo_lead", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            nome = st.text_input("Nome do Cliente")
+            telefone = st.text_input("WhatsApp")
+        with col2:
+            status = st.selectbox("Status Inicial", ["Novo", "Pendente", "Em Negociação", "Fechado", "Cancelado"])
+        
+        obs = st.text_area("Observações Iniciais")
+        botao_cadastrar = st.form_submit_button("Salvar no Banco de Dados")
 
-# 4. Lógica para salvar no Supabase
-if botao_cadastrar:
-    if nome_cliente and telefone_cliente:
-        try:
-            # Organizando os dados para a tabela VENDAS
-            dados_para_salvar = {
-                "Nome": nome_cliente,
-                "Telefone": telefone_cliente,
-                "Status": status_venda
-            }
-            
-            # Executando o comando de inserção
-            supabase.table("VENDAS").insert(dados_para_salvar).execute()
-            
-            st.success(f"✅ Sucesso! {nome_cliente} foi adicionado à lista.")
-        except Exception as e:
-            st.error(f"❌ Erro ao salvar no banco de dados: {e}")
+    if botao_cadastrar:
+        if nome and telefone:
+            try:
+                supabase.table("VENDAS").insert({
+                    "Nome": nome, 
+                    "Telefone": telefone, 
+                    "Status": status, 
+                    "Observacoes": obs
+                }).execute()
+                st.success(f"✅ {nome} cadastrado com sucesso!")
+            except Exception as e:
+                st.error(f"Erro ao salvar: {e}")
+        else:
+            st.warning("⚠️ Preencha pelo menos Nome e Telefone!")
+
+# --- PÁGINA 2: CONSULTA E EDIÇÃO ---
+elif opcao == "🔍 Consulta e Edição":
+    st.title("📊 Painel de Controle e Gestão")
+
+    # Busca os dados
+    resposta = supabase.table("VENDAS").select("*").order("created_at", desc=True).execute()
+
+    if resposta.data:
+        df = pd.DataFrame(resposta.data)
+        df['Data'] = pd.to_datetime(df['created_at']).dt.strftime('%d/%m/%Y %H:%M')
+        
+        # Tabela de Visualização
+        st.subheader("📋 Lista de Clientes Atuais")
+        st.dataframe(df[["Data", "Nome", "Telefone", "Status", "Observacoes"]], use_container_width=True)
+
+        st.divider()
+
+        # Formulário de Edição
+        st.subheader("📝 Editar Registro Selecionado")
+        lista_nomes = df['Nome'].tolist()
+        nome_sel = st.selectbox("Selecione para alterar:", [""] + lista_nomes)
+
+        if nome_sel:
+            dados = df[df['Nome'] == nome_sel].iloc[0]
+
+            with st.form("form_edicao_painel"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    ed_nome = st.text_input("Nome", value=str(dados['Nome']))
+                    ed_tel = st.text_input("Telefone", value=str(dados['Telefone']))
+                with c2:
+                    st_opcoes = ["Novo", "Pendente", "Em Negociação", "Fechado", "Cancelado"]
+                    st_atual = dados['Status'] if dados['Status'] in st_opcoes else "Novo"
+                    ed_status = st.selectbox("Status", st_opcoes, index=st_opcoes.index(st_atual))
+                
+                obs_v = str(dados['Observacoes']) if dados['Observacoes'] and str(dados['Observacoes']) != 'None' else ""
+                ed_obs = st.text_area("Observações", value=obs_v)
+                
+                if st.form_submit_button("Salvar Alterações"):
+                    try:
+                        supabase.table("VENDAS").update({
+                            "Nome": ed_nome,
+                            "Telefone": ed_tel,
+                            "Status": ed_status,
+                            "Observacoes": ed_obs
+                        }).eq("Nome", nome_sel).execute()
+                        st.success("✅ Atualizado!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro: {e}")
     else:
-        st.warning("⚠️ Por favor, preencha o Nome e o Telefone antes de salvar.")
-
-# Rodapé simples
-st.markdown("---")
-st.caption("Sistema desenvolvido para Consultoria Financeira e Plano Med Card.") 
+        st.info("Nenhum dado encontrado.")
