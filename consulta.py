@@ -1,32 +1,32 @@
 import streamlit as st
-from supabase import create_client, Client
 import pandas as pd
+from supabase import create_client, Client
 
-# 1. Conexão
+# --- CONEXÃO (Mantenha suas chaves) ---
 URL = "https://zfwdjpklemkuvwizdoly.supabase.co"
 KEY = "sb_publishable_qMi5vxWp54WVmmQuoDHkdg_YeaRbiW_" 
 supabase = create_client(URL, KEY)
 
-st.title("🔍 CRM Med Card - Consulta e Gestão")
+st.title("🔍 Gestão de Leads - CRM")
 
-# --- PARTE 1: VISUALIZAÇÃO ---
+# 1. BUSCA OS DADOS
 resposta = supabase.table("VENDAS").select("*").order("created_at", desc=True).execute()
 
 if resposta.data:
     df = pd.DataFrame(resposta.data)
     df['Data'] = pd.to_datetime(df['created_at']).dt.strftime('%d/%m/%Y %H:%M')
     
-    # Adicionamos 'Observacoes' na lista de colunas para exibir
+    # Exibe a tabela (incluindo Observações se houver)
     st.dataframe(df[["Data", "Nome", "Telefone", "Status", "Observacoes"]], use_container_width=True)
 
     st.divider()
+    st.subheader("📝 Editar Registro")
 
-    # --- PARTE 2: EDIÇÃO ---
-    st.subheader("📝 Editar Informações")
     lista_nomes = df['Nome'].tolist()
-    nome_selecionado = st.selectbox("Selecione para editar:", [""] + lista_nomes)
+    nome_selecionado = st.selectbox("Selecione quem deseja alterar:", [""] + lista_nomes)
 
     if nome_selecionado != "":
+        # Puxa os dados atuais do banco para preencher o formulário
         dados_cliente = df[df['Nome'] == nome_selecionado].iloc[0]
         id_cliente = dados_cliente['id']
 
@@ -36,21 +36,29 @@ if resposta.data:
                 novo_nome = st.text_input("Nome", value=dados_cliente['Nome'])
                 novo_tel = st.text_input("Telefone", value=dados_cliente['Telefone'])
             with col2:
+                # Garante que o selectbox comece no status atual do cliente
+                status_atual = dados_cliente['Status'] if dados_cliente['Status'] in ["Novo", "Pendente", "Fechado", "Cancelado"] else "Novo"
                 novo_status = st.selectbox("Status", ["Novo", "Pendente", "Fechado", "Cancelado"], 
-                                          index=["Novo", "Pendente", "Fechado", "Cancelado"].index(dados_cliente['Status']))
+                                          index=["Novo", "Pendente", "Fechado", "Cancelado"].index(status_atual))
             
-            # Campo de Observações (Área de texto maior)
-            nova_obs = st.text_area("Observações", value=str(dados_cliente['Observacoes']) if dados_cliente['Observacoes'] else "")
+            # CAMPO DE OBSERVAÇÃO (Onde estava o erro)
+            # Se a observação for nula no banco, ele coloca um texto vazio
+            obs_atual = dados_cliente['Observacoes'] if dados_cliente['Observacoes'] else ""
+            nova_obs = st.text_area("Anotações / Observações", value=str(obs_atual))
             
-            botao_editar = st.form_submit_button("Salvar Alterações")
+            botao_salvar = st.form_submit_button("Confirmar Alterações")
 
-        if botao_editar:
-            supabase.table("VENDAS").update({
-                "Nome": novo_nome,
-                "Telefone": novo_tel,
-                "Status": novo_status,
-                "Observacoes": nova_obs
-            }).eq("id", id_cliente).execute()
-            
-            st.success(f"✅ Registro de {nome_selecionado} atualizado!")
-            st.rerun()
+        if botao_salvar:
+            try:
+                # AQUI É ONDE SALVAMOS TUDO DE VOLTA NO SUPABASE
+                supabase.table("VENDAS").update({
+                    "Nome": novo_nome,
+                    "Telefone": novo_tel,
+                    "Status": novo_status,
+                    "Observacoes": nova_obs  # Salvando a nova observação
+                }).eq("id", id_cliente).execute()
+                
+                st.success(f"✅ Alterações para {nome_selecionado} salvas com sucesso!")
+                st.rerun() # Atualiza a página para mostrar os dados novos
+            except Exception as e:
+                st.error(f"Erro ao salvar: {e}")
