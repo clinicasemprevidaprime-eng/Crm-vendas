@@ -1,64 +1,76 @@
 import streamlit as st
-import pandas as pd
 from supabase import create_client, Client
+import pandas as pd
 
-# --- CONEXÃO (Mantenha suas chaves) ---
+# 1. Conexão (Mantenha suas chaves reais)
 URL = "https://zfwdjpklemkuvwizdoly.supabase.co"
 KEY = "sb_publishable_qMi5vxWp54WVmmQuoDHkdg_YeaRbiW_" 
 supabase = create_client(URL, KEY)
 
-st.title("🔍 Gestão de Leads - CRM")
+st.title("🔍 Gestão Med Card - Consulta e Edição")
 
-# 1. BUSCA OS DADOS
+# --- PARTE 1: BUSCA E EXIBIÇÃO ---
+# Buscamos todas as colunas, incluindo ID e Observacoes
 resposta = supabase.table("VENDAS").select("*").order("created_at", desc=True).execute()
 
 if resposta.data:
     df = pd.DataFrame(resposta.data)
-    df['Data'] = pd.to_datetime(df['created_at']).dt.strftime('%d/%m/%Y %H:%M')
     
-    # Exibe a tabela (incluindo Observações se houver)
-    st.dataframe(df[["Data", "Nome", "Telefone", "Status", "Observacoes"]], use_container_width=True)
+    # Formatação da Data para exibição
+    df['Data_Formatada'] = pd.to_datetime(df['created_at']).dt.strftime('%d/%m/%Y %H:%M')
+    
+    # Exibe a tabela principal
+    st.dataframe(df[["Data_Formatada", "Nome", "Telefone", "Status", "Observacoes"]], use_container_width=True)
 
     st.divider()
-    st.subheader("📝 Editar Registro")
 
+    # --- PARTE 2: EDIÇÃO ---
+    st.subheader("📝 Editar Informações")
+    
+    # Criamos a lista de nomes
     lista_nomes = df['Nome'].tolist()
-    nome_selecionado = st.selectbox("Selecione quem deseja alterar:", [""] + lista_nomes)
+    nome_selecionado = st.selectbox("Escolha o cliente para alterar:", [""] + lista_nomes)
 
     if nome_selecionado != "":
-        # Puxa os dados atuais do banco para preencher o formulário
+        # PUXANDO OS DADOS COM SEGURANÇA
         dados_cliente = df[df['Nome'] == nome_selecionado].iloc[0]
-        id_cliente = dados_cliente['id']
+        
+        # O ID é crucial aqui para evitar o erro de 'bigint'
+        id_cliente = int(dados_cliente['id']) 
 
-        with st.form("form_edicao"):
+        with st.form("form_edicao_final"):
             col1, col2 = st.columns(2)
             with col1:
-                novo_nome = st.text_input("Nome", value=dados_cliente['Nome'])
-                novo_tel = st.text_input("Telefone", value=dados_cliente['Telefone'])
+                novo_nome = st.text_input("Nome", value=str(dados_cliente['Nome']))
+                novo_tel = st.text_input("Telefone", value=str(dados_cliente['Telefone']))
             with col2:
-                # Garante que o selectbox comece no status atual do cliente
-                status_atual = dados_cliente['Status'] if dados_cliente['Status'] in ["Novo", "Pendente", "Fechado", "Cancelado"] else "Novo"
-                novo_status = st.selectbox("Status", ["Novo", "Pendente", "Fechado", "Cancelado"], 
-                                          index=["Novo", "Pendente", "Fechado", "Cancelado"].index(status_atual))
+                status_lista = ["Novo", "Pendente", "Fechado", "Cancelado", "Em Negociação"]
+                # Verifica se o status atual existe na lista, senão usa 'Novo'
+                try:
+                    idx_status = status_lista.index(dados_cliente['Status'])
+                except:
+                    idx_status = 0
+                novo_status = st.selectbox("Status", status_lista, index=idx_status)
             
-            # CAMPO DE OBSERVAÇÃO (Onde estava o erro)
-            # Se a observação for nula no banco, ele coloca um texto vazio
-            obs_atual = dados_cliente['Observacoes'] if dados_cliente['Observacoes'] else ""
-            nova_obs = st.text_area("Anotações / Observações", value=str(obs_atual))
+            # Tratando a observação para nunca ser 'None'
+            obs_inicial = dados_cliente['Observacoes'] if dados_cliente['Observacoes'] else ""
+            nova_obs = st.text_area("Anotações / Observações", value=str(obs_inicial))
             
             botao_salvar = st.form_submit_button("Confirmar Alterações")
 
         if botao_salvar:
             try:
-                # AQUI É ONDE SALVAMOS TUDO DE VOLTA NO SUPABASE
+                # O comando .eq("id", id_cliente) agora usará um número real, não 'None'
                 supabase.table("VENDAS").update({
                     "Nome": novo_nome,
                     "Telefone": novo_tel,
                     "Status": novo_status,
-                    "Observacoes": nova_obs  # Salvando a nova observação
+                    "Observacoes": nova_obs
                 }).eq("id", id_cliente).execute()
                 
-                st.success(f"✅ Alterações para {nome_selecionado} salvas com sucesso!")
-                st.rerun() # Atualiza a página para mostrar os dados novos
+                st.success(f"✅ Dados de {nome_selecionado} atualizados!")
+                st.rerun()
             except Exception as e:
                 st.error(f"Erro ao salvar: {e}")
+else:
+    st.info("O banco de dados está vazio.")
