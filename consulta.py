@@ -7,7 +7,7 @@ URL = "https://zfwdjpklemkuvwizdoly.supabase.co"
 KEY = "sb_publishable_qMi5vxWp54WVmmQuoDHkdg_YeaRbiW_" 
 supabase = create_client(URL, KEY)
 
-st.title("🔍 Gestão Med Card - Consulta e Edição")
+st.title("🔍 Gestão Crm - Consulta e Edição")
 
 # --- BUSCA DE DADOS ---
 resposta = supabase.table("VENDAS").select("*").order("created_at", desc=True).execute()
