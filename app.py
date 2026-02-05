@@ -130,11 +130,8 @@ resposta = supabase.table("VENDAS").select("*").order("created_at", desc=True).e
 
 if resposta.data:
     df = pd.DataFrame(resposta.data)
-    
-    # REMOVE AS LINHAS ONDE O NOME ESTÁ EM BRANCO (O erro do espaço vazio)
-    df = df.dropna(subset=['Nome']) # Remove nulos
-    df = df[df['Nome'].str.strip() != ""] # Remove espaços vazios
-    
-    df['Data'] = pd.to_datetime(df['created_at']).dt.strftime('%d/%m/%Y %H:%M')
-    
-    # ... restante do seu código de exibição ...
+   # --- COLE ESTE PEDACINHO AQUI ---
+df = df.dropna(subset=['Nome'])  # Tira o que é nulo
+df = df[df['Nome'].str.strip() != ""] # Tira o que é só espaço vazio
+# ------------------------------- 
+   
