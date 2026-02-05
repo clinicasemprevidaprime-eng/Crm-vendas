@@ -2,7 +2,7 @@ import streamlit as st
 from supabase import create_client, Client
 import pandas as pd
 
-# 1. Configurações de Conexão (Mantenha as suas chaves reais)
+# 1. Configurações de Conexão
 URL = "https://zfwdjpklemkuvwizdoly.supabase.co"
 KEY = "sb_publishable_qMi5vxWp54WVmmQuoDHkdg_YeaRbiW_" 
 supabase = create_client(URL, KEY)
@@ -41,6 +41,11 @@ if categoria == "👤 Leads (PF)":
         res = supabase.table("VENDAS").select("*").order("created_at", desc=True).execute()
         if res.data:
             df = pd.DataFrame(res.data)
+            
+            # --- LIMPEZA DE ESPAÇOS EM BRANCO (PF) ---
+            df = df.dropna(subset=['Nome'])
+            df = df[df['Nome'].str.strip() != ""]
+            
             st.dataframe(df[["Nome", "Telefone", "Status", "Observacoes"]], use_container_width=True)
             
             st.divider()
@@ -95,6 +100,11 @@ elif categoria == "🤝 Parceiros (PJ)":
         
         if res_p.data:
             df_p = pd.DataFrame(res_p.data)
+            
+            # --- LIMPEZA DE ESPAÇOS EM BRANCO (PJ) ---
+            df_p = df_p.dropna(subset=['Nome_Parceiro'])
+            df_p = df_p[df_p['Nome_Parceiro'].str.strip() != ""]
+
             st.dataframe(df_p[["Nome_Parceiro", "Especialidade", "Telefone", "Email", "Observacoes"]], use_container_width=True)
             
             st.divider()
@@ -124,14 +134,3 @@ elif categoria == "🤝 Parceiros (PJ)":
                     st.rerun()
         else:
             st.info("Nenhum parceiro registado.")
-
-# --- BUSCA DE DADOS COM LIMPEZA ---
-resposta = supabase.table("VENDAS").select("*").order("created_at", desc=True).execute()
-
-if resposta.data:
-    df = pd.DataFrame(resposta.data)
-   # --- COLE ESTE PEDACINHO AQUI ---
-df = df.dropna(subset=['Nome'])  # Tira o que é nulo
-df = df[df['Nome'].str.strip() != ""] # Tira o que é só espaço vazio
-# ------------------------------- 
-   
