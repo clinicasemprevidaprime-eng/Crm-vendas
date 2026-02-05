@@ -10,7 +10,7 @@ supabase = create_client(URL, KEY)
 st.set_page_config(page_title="CRM Clínica Sempre Vida", layout="wide")
 
 # --- MENU LATERAL ---
-st.sidebar.title("🏥 SISTEMA GESTÃO")
+st.sidebar.title("🏥 CRM RAQUEL")
 categoria = st.sidebar.selectbox("O que deseja gerenciar?", ["👤 Leads (PF)", "🤝 Parceiros (PJ)"])
 opcao = st.sidebar.radio("Ação:", ["📝 Cadastro", "📊 Gestão Completa"])
 
@@ -19,7 +19,7 @@ opcao = st.sidebar.radio("Ação:", ["📝 Cadastro", "📊 Gestão Completa"])
 # ==========================================
 if categoria == "👤 Leads (PF)":
     if opcao == "📝 Cadastro":
-        st.title("🚀 Novo Lead - Med Card")
+        st.title("🚀 Novo Lead")
         with st.form("form_pf", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
@@ -76,10 +76,10 @@ elif categoria == "🤝 Parceiros (PJ)":
         with st.form("form_pj", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
-                pj_nome = st.text_input("Nome da Clínica/Empresa")
+                pj_nome = st.text_input("Nome da Empresa")
                 pj_tel = st.text_input("Telefone")
             with col2:
-                pj_esp = st.text_input("Especialidade")
+                pj_esp = st.text_input("Ramo de Atividade")
                 pj_mail = st.text_input("E-mail")
             pj_obs = st.text_area("Notas da Parceria")
             if st.form_submit_button("Cadastrar Parceiro"):
