@@ -124,3 +124,17 @@ elif categoria == "🤝 Parceiros (PJ)":
                     st.rerun()
         else:
             st.info("Nenhum parceiro registado.")
+
+# --- BUSCA DE DADOS COM LIMPEZA ---
+resposta = supabase.table("VENDAS").select("*").order("created_at", desc=True).execute()
+
+if resposta.data:
+    df = pd.DataFrame(resposta.data)
+    
+    # REMOVE AS LINHAS ONDE O NOME ESTÁ EM BRANCO (O erro do espaço vazio)
+    df = df.dropna(subset=['Nome']) # Remove nulos
+    df = df[df['Nome'].str.strip() != ""] # Remove espaços vazios
+    
+    df['Data'] = pd.to_datetime(df['created_at']).dt.strftime('%d/%m/%Y %H:%M')
+    
+    # ... restante do seu código de exibição ...
